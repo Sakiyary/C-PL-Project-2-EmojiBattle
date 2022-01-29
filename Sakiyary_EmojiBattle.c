@@ -95,13 +95,17 @@ int MyAction(int Input) {
         My.FRect.x -= My.FSpeed;
     if (Input & MoveRight && My.FRect.x <= Width - My.FRect.w)
         My.FRect.x += My.FSpeed;
-    if (Input & Shoot && MyBulletCD == 0) {
-        ListAdd(&MyBullets, CreateObject(My, MyBltA, 20, My.Direction, 1, MyBltType, 0x00, MyBltDmg));
-        ListAdd(&MyBullets, CreateObject(My, MyBltA, 20, My.Direction - 15, 1, MyBltType, 0x00, MyBltDmg));
-        ListAdd(&MyBullets, CreateObject(My, MyBltA, 20, My.Direction + 15, 1, MyBltType, 0x00, MyBltDmg));
-        ListAdd(&MyBullets, CreateObject(My, MyBltA, 20, My.Direction - 30, 1, MyBltType, 0x00, MyBltDmg));
-        ListAdd(&MyBullets, CreateObject(My, MyBltA, 20, My.Direction + 30, 1, MyBltType, 0x00, MyBltDmg));
-        MyBulletCD = 15;
+    if (Input & Shoot && MyBltCD == 0) {
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction - 10, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction + 10, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction - 20, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction + 20, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction - 30, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction + 30, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction - 40, 1, MyBltType, 1, MyBltDmg));
+        ListAdd(&MyBlt, CreateObject(My, MyBltSize, 20, My.Direction + 40, 1, MyBltType, 1, MyBltDmg));
+        MyBltCD = 5;
     }
     if (Input & RotateLeft && My.Direction < 270)
         My.Direction += 10;
@@ -131,16 +135,22 @@ OP *CreateObject(OP who, float size, float fspeed, double direction, int hp, int
     New->FRect.h = size;
     New->FCentre.x = size / 2;
     New->FCentre.y = size / 2;
-    if (type & (MyBltType | L2BltType | L3Blt1Type | L3Blt2Type)) {
+    if (type & (MyBltType | Lv2BltType | Lv3Blt1Type | Lv3Blt2Type)) {
         New->FRect.x = who.FRect.x + who.FCentre.x - size / 2;
         New->FRect.y = who.FRect.y + who.FCentre.y - size / 2;
         New->Direction = direction;
-    } else if (type & (L1EType | L2E2Type | L3EType)) {
-        New->FRect.x = RorL > 1 ? (Width - size) / 2
-                                : RorL ? -size + (float) (rand() % ChargeRandRage)
-                                       : Width - (float) (rand() % ChargeRandRage);
+    }
+    if (type & (Lv2Enm1Type)) {
+        New->FRect.x = (Width - size) / 2;
         New->FRect.y = -size;
-        if (type & L1EType)
+        New->Direction = direction;
+    }
+    if (type & (Lv1EnmType | Lv2Enm2Type | Lv3EnmType)) {
+        New->FRect.x = RorL > 1 ? (Width - size) / 2
+                                : RorL ? +(float) (rand() % ChargeRandRage)
+                                       : Width - size - (float) (rand() % ChargeRandRage);
+        New->FRect.y = -size;
+        if (type & Lv1EnmType)
             RorL += RorL > 1 ? -RorL : 1;
         else
             RorL = !RorL;
@@ -165,30 +175,39 @@ void ListMove(OP **List) {
         return;
     OP *Now = *List;
     while (Now != NULL) {
-        if (Now->Type & (L2BltType | L1EType | L2E2Type | L3EType)) {
-            double dDir = Now->Type & L1EType ? 0.5 : 0.2;
-            double FollowDir = XY2Dir(Now->FRect.x + Now->FCentre.x,
-                                      Now->FRect.y + 0,
-                                      My.FRect.x + My.FCentre.x,
-                                      My.FRect.y + My.FRect.h);
-            Now->Direction += FollowDir - Now->Direction > 1 ? dDir : -dDir;
-        }
-        Now->FRect.x += Now->FSpeed * (float) sin(Now->Direction * D2R);
-        Now->FRect.y += Now->FSpeed * (float) cos(Now->Direction * D2R);
-        if ((Now->FRect.y < -Now->FRect.h - 10)
-            || (Now->FRect.y >= Height)
-            || (Now->FRect.x < -Now->FRect.w - 10)
-            || (Now->FRect.x >= Width + 10)) {
-            Now->HP = 0;
-            if (Now->Type != MyBltType)
-                My.HP -= Now->Damage / 2;
+        if (Now->Type & (Lv2Enm1Type | BossType)) {
+            if (Now->FRect.y > Now->FRect.h / 2) {
+                Now->FRect.x += Now->FSpeed * (float) sin(TwinkTime * D2R) * 3 / 2;
+                Now->FRect.y += Now->FSpeed * (float) cos(TwinkTime * D2R) / 2;
+                Now->FRect.y = Now->FRect.y > Now->FRect.h / 2 ? Now->FRect.y : Now->FRect.h / 2 + 1;
+            } else
+                Now->FRect.y += Now->FSpeed;
+        } else {
+            if (Now->Type & (Lv2BltType | Lv1EnmType | Lv2Enm2Type | Lv3EnmType)) {
+                double dDir = Now->Type & Lv1EnmType ? 0.5 : 0.2;
+                double FollowDir = XY2Dir(Now->FRect.x + Now->FCentre.x,
+                                          Now->FRect.y + 0,
+                                          My.FRect.x + My.FCentre.x,
+                                          My.FRect.y + My.FRect.h);
+                Now->Direction += FollowDir - Now->Direction > 1 ? dDir : -dDir;
+            }
+            Now->FRect.x += Now->FSpeed * (float) sin(Now->Direction * D2R);
+            Now->FRect.y += Now->FSpeed * (float) cos(Now->Direction * D2R);
+            if ((Now->FRect.y < -Now->FRect.h - 10)
+                || (Now->FRect.y >= Height)
+                || (Now->FRect.x < -Now->FRect.w - 10)
+                || (Now->FRect.x >= Width + 10)) {
+                Now->HP = 0;
+                if (Now->Type & (Lv1EnmType | Lv2Enm2Type | Lv3EnmType))
+                    My.HP -= Now->Damage / 2;
+            }
         }
         Now = Now->Next;
     }
     Now = *List;
     if (Now->Type != MyBltType) {
         Collision(List);
-        ListRemove(&MyBullets);
+        ListRemove(&MyBlt);
     }
     ListRemove(List);
 }
@@ -198,24 +217,28 @@ void Collision(OP **List) {
         return;
     OP *Now = *List;
     while (Now != NULL) {
-        for (OP *i = MyBullets; i != NULL; i = i->Next)
-            if (XY2Dis(i->FRect.x + i->FCentre.x,
-                       i->FRect.y + i->FCentre.x,
-                       Now->FRect.x + Now->FCentre.x,
-                       Now->FRect.y + Now->FCentre.y) < i->FRect.w + Now->FRect.w / 3) {
-                if (Now->HP)
-                    i->HP = 0;
-                Now->HP -= Now->HP - i->Damage < 0 ? Now->HP : i->Damage;
-            }
-
+        if (Now->Type & (Lv2Enm1Type | BossType | Lv1EnmType | Lv2Enm2Type | Lv3EnmType))
+            for (OP *i = MyBlt; i != NULL; i = i->Next)
+                if (XY2Dis(i->FRect.x + i->FCentre.x,
+                           i->FRect.y + i->FCentre.x,
+                           Now->FRect.x + Now->FCentre.x,
+                           Now->FRect.y + Now->FCentre.y) < i->FRect.w + Now->FRect.w / 4) {
+                    if (Now->HP)
+                        i->HP = 0;
+                    Now->HP -= Now->HP - i->Damage < 0 ? Now->HP : i->Damage;
+                }
+        if (Now->Type & (Lv2Enm1Type)) {
+            if (Now->HP < Lv2Enm1HP / 10 * 7)Now->Status = 12;
+            if (Now->HP < Lv2Enm1HP / 10 * 4)Now->Status = 13;
+        }
         if (!Now->HP) {
             //Props
         } else if (XY2Dis(My.FRect.x + My.FCentre.x,
                           My.FRect.y + My.FCentre.y,
                           Now->FRect.x + Now->FCentre.x,
-                          Now->FRect.y + Now->FCentre.y) < My.FRect.w) {
+                          Now->FRect.y + Now->FCentre.y) < My.FRect.w / 4 * 3) {
             My.HP -= Now->Damage;
-            Now->HP = 0;
+            Now->HP -= My.Damage;
         }
         Now = Now->Next;
     }
@@ -228,10 +251,12 @@ void ListRemove(OP **List) {
     OP *Pre = NULL;
     while (Now != NULL)
         if (!Now->HP) {
-            if (Now->Type & L1EType)
+            if (Now->Type & Lv1EnmType)
                 Level1Cnt--;
-            if (Now->Type & L2E2Type)
+            if (Now->Type & Lv2Enm1Type) {
                 Level2Cnt--;
+                PeltBltCD = 100;
+            }
             if (*List == Now) {
                 *List = Now->Next;
                 free(Now);
@@ -249,8 +274,10 @@ void ListRemove(OP **List) {
 }
 
 void CoolDown() {
-    MyBulletCD -= MyBulletCD > 0 ? 1 : 0;
+    MyBltCD -= MyBltCD > 0 ? 1 : 0;
     ChargeCD -= ChargeCD > 0 ? 1 : 0;
+    PeltEnemyCD -= PeltEnemyCD > 0 ? 1 : 0;
+    PeltBltCD -= PeltBltCD > 0 ? 1 : 0;
     LevelCD -= LevelCD > 0 ? 1 : 0;
     TwinkTime -= TwinkTime > 0 ? 4 : -356;
 }
@@ -266,29 +293,42 @@ float XY2Dis(float x1, float y1, float x2, float y2) {
 void CreateEnemy(int level) {
     if (ChargeEnemy == NULL)
         ChargeCD = 0;
+    if (PeltEnemy == NULL)
+        PeltEnemyCD = 0;
     switch (level) {
         case 1:
             if (!ChargeCD) {
                 ChargeEnemyForm += ChargeEnemyForm < 3 ? 1 : -2;
-                ListAdd(&ChargeEnemy, CreateObject(My, L1EA, 4, 0, L1EHP, L1EType, 0, L1EDmg));
-                ListAdd(&ChargeEnemy, CreateObject(My, L1EA, 4, 0, L1EHP, L1EType, 0, L1EDmg));
-                ListAdd(&ChargeEnemy, CreateObject(My, L1EA, 4, 0, L1EHP, L1EType, 0, L1EDmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv1EnmSize, 4, 0, Lv1EnmHP, Lv1EnmType, ChargeEnemyForm, Lv1EnmDmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv1EnmSize, 4, 0, Lv1EnmHP, Lv1EnmType, ChargeEnemyForm, Lv1EnmDmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv1EnmSize, 4, 0, Lv1EnmHP, Lv1EnmType, ChargeEnemyForm, Lv1EnmDmg));
                 ChargeCD += 1000;
             }
             break;
         case 2:
             if (!ChargeCD) {
                 ChargeEnemyForm += ChargeEnemyForm < 5 ? 1 : -1;
-                ListAdd(&ChargeEnemy, CreateObject(My, L2EA, 5, 0, L2E2HP, L2E2Type, 0, L2E2Dmg));
-                ListAdd(&ChargeEnemy, CreateObject(My, L2EA, 5, 0, L2E2HP, L2E2Type, 0, L2E2Dmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv2EnmSize, 5, 0, Lv2Enm2HP, Lv2Enm2Type, ChargeEnemyForm, Lv2Enm2Dmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv2EnmSize, 5, 0, Lv2Enm2HP, Lv2Enm2Type, ChargeEnemyForm, Lv2Enm2Dmg));
                 ChargeCD += 1000;
             }
+            if (!PeltEnemyCD) {
+                ListAdd(&PeltEnemy, CreateObject(My, Lv2EnmSize, 5, 0, Lv2Enm1HP, Lv2Enm1Type, 11, Lv2Enm1Dmg));
+                PeltEnemyCD += 3000;
+            }
+            if (!PeltBltCD)
+                for (OP *i = PeltEnemy; i != NULL; i = i->Next) {
+                    ListAdd(&PeltBlt, CreateObject(*i, Lv2BltSize, 10, -10, 1, Lv2BltType, 3, Lv2BltDmg));
+                    ListAdd(&PeltBlt, CreateObject(*i, Lv2BltSize, 10, 10, 1, Lv2BltType, 3, Lv2BltDmg));
+                    PeltBltCD += 80;
+                }
+
             break;
         case 3:
             if (!ChargeCD) {
                 ChargeEnemyForm += ChargeEnemyForm < 8 ? 1 : -2;
-                ListAdd(&ChargeEnemy, CreateObject(My, L3EA, 6, 0, L3EHP, L3EType, 0, L3EDmg));
-                ListAdd(&ChargeEnemy, CreateObject(My, L3EA, 6, 0, L3EHP, L3EType, 0, L3EDmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv3EnmSize, 6, 0, Lv3EnmHP, Lv3EnmType, ChargeEnemyForm, Lv3EnmDmg));
+                ListAdd(&ChargeEnemy, CreateObject(My, Lv3EnmSize, 6, 0, Lv3EnmHP, Lv3EnmType, ChargeEnemyForm, Lv3EnmDmg));
                 ChargeCD += 1000;
             }
             break;
@@ -299,7 +339,8 @@ void CreateEnemy(int level) {
 }
 
 void Move() {
-    ListMove(&MyBullets);
+    ListMove(&MyBlt);
+    ListMove(&PeltBlt);
     ListMove(&ChargeEnemy);
     ListMove(&PeltEnemy);
     Upgrade();
@@ -312,15 +353,16 @@ void Upgrade() {
         Level = 1;
         LevelCD = 300;
         Level1Cnt = 36;
-        Level2Cnt = 12;
+        Level2Cnt = 6;
         LevelCD = 150;
         ChargeEnemyForm = 3;
-        ChargeRandRage = 400;
+        ChargeRandRage = 300;
     } else if (!Level1Cnt && Level == 1) {
         Level = 2;
         LevelCD = 150;
         ChargeEnemyForm = 3;
         ChargeRandRage = 200;
+        PeltBltCD = 100;
     } else if (!Level2Cnt && Level == 2) {
         Level = 3;
         LevelCD = 150;
@@ -332,8 +374,10 @@ void Upgrade() {
 void PrintAnime() {
 //    SDL_RenderClear(Renderer);
     PrintGameBG();
-    PrintList(&ChargeEnemy, EnemySurface, ChargeEnemyForm);
-    PrintList(&MyBullets, BulletSurface, 1);
+    PrintList(&ChargeEnemy, EnemySurface);
+    PrintList(&PeltEnemy, EnemySurface);
+    PrintList(&MyBlt, BulletSurface);
+    PrintList(&PeltBlt, BulletSurface);
     PrintMyself();
 
     if (LevelCD)
@@ -345,7 +389,7 @@ void PrintThemeBG() {
     SDL_Texture *ThemeBGTexture = SDL_CreateTextureFromSurface(Renderer, ThemeBGSurface);
     SDL_RenderCopy(Renderer, ThemeBGTexture, NULL, &ThemeBGRect);
     SDL_DestroyTexture(ThemeBGTexture);
-    SDL_Surface *ThemeTipsSurface = TTF_RenderUTF8_Blended(FontMiddle, ThemeTips, FontTwinkColor);
+    SDL_Surface *ThemeTipsSurface = TTF_RenderUTF8_Blended(MiddleFont, ThemeTips, FontTwinkColor);
     SDL_Texture *ThemeTipsTexture = SDL_CreateTextureFromSurface(Renderer, ThemeTipsSurface);
     SDL_Rect ThemeTipsRect = {(Width - ThemeTipsSurface->w) / 2, 750, ThemeTipsSurface->w, ThemeTipsSurface->h};
     SDL_RenderCopy(Renderer, ThemeTipsTexture, NULL, &ThemeTipsRect);
@@ -363,9 +407,9 @@ void PrintGameBG() {
     GameBGRect.y += GameBGRect.y >= 0 ? -Height + ScrollSpeed : ScrollSpeed;
 }
 
-void PrintList(OP **List, SDL_Surface *ListSurface[], int Form) {
+void PrintList(OP **List, SDL_Surface *ListSurface[]) {
     for (OP *i = *List; i != NULL; i = i->Next) {
-        SDL_Texture *ListTexture = SDL_CreateTextureFromSurface(Renderer, ListSurface[Form]);
+        SDL_Texture *ListTexture = SDL_CreateTextureFromSurface(Renderer, ListSurface[i->Status]);
         SDL_RenderCopyExF(Renderer, ListTexture, NULL, &i->FRect, -i->Direction, &i->FCentre, 0);
         SDL_DestroyTexture(ListTexture);
     }
@@ -383,7 +427,7 @@ void PrintLevel() {
         sprintf_s(TitleLevel, 10, "Start");
     else
         sprintf_s(TitleLevel, 10, "Level%d", Level);
-    SDL_Surface *TitleLevelSurface = TTF_RenderUTF8_Blended(FontLarge, TitleLevel, FontTwinkColor);
+    SDL_Surface *TitleLevelSurface = TTF_RenderUTF8_Blended(LargeFont, TitleLevel, FontTwinkColor);
     SDL_Texture *TitleLevelTexture = SDL_CreateTextureFromSurface(Renderer, TitleLevelSurface);
     SDL_Rect TitleLevelRect = {(Width - TitleLevelSurface->w) / 2, (Height - TitleLevelSurface->h) / 2, TitleLevelSurface->w, TitleLevelSurface->h};
     SDL_RenderCopy(Renderer, TitleLevelTexture, NULL, &TitleLevelRect);
@@ -397,9 +441,9 @@ void LoadRes() {
     BGM = Mix_LoadMUS("res/Enemy.mp3");
     Mix_VolumeMusic(BGMVolume);
 
-    FontLarge = TTF_OpenFont("res/GenshinDefault.ttf", 64);
-    FontMiddle = TTF_OpenFont("res/GenshinDefault.ttf", 40);
-    FontSmall = TTF_OpenFont("res/GenshinDefault.ttf", 28);
+    LargeFont = TTF_OpenFont("res/GenshinDefault.ttf", 64);
+    MiddleFont = TTF_OpenFont("res/GenshinDefault.ttf", 40);
+    SmallFont = TTF_OpenFont("res/GenshinDefault.ttf", 28);
 
     GameBGSurface = IMG_Load("res/GameBG.png");
     ThemeBGSurface = IMG_Load("res/ThemeBG.png");

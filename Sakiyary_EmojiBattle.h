@@ -17,37 +17,20 @@
 #define R2D 57.29577951
 #define ScrollSpeed 10
 #define BGMVolume 30
-#define mSPF 10
+#define SoundVolume 40
+#define mSPF 22
 
-#define MySize 96.0
-#define Lv1EnmSize 120.0
-#define Lv2EnmSize 144.0
-#define Lv3EnmSize 120.0
-#define Lv3BossSize 216.0
-#define PropsSize 120.0
+#define SizeMy 96.0
+#define SizeLv1Enm 120.0
+#define SizeLv2Enm 144.0
+#define SizeLv3Enm 120.0
+#define SizeBoss 216.0
+#define SizeProps 120.0
 
-#define MyBltSize 64.0
-#define Lv2BltSize 80.0
-#define Lv3Blt1Size 80.0
-#define Lv3Blt2Size 240.0
-
-#define MyHP 1000
-#define Lv1EnmHP 30
-#define Lv2Enm1HP 200
-#define Lv2Enm2HP 40
-#define Lv3EnmHP 50
-#define Lv3BossHP 200000
-
-#define MyDmg 100
-#define MyBltDmg 10
-#define Lv1EnmDmg 200
-#define Lv2Enm1Dmg 1000
-#define Lv2BltDmg 100
-#define Lv2Enm2Dmg 300
-#define Lv3EnmDmg 400
-#define Lv3BossDmg 1000
-#define Lv3Blt1Dmg 200
-#define Lv3Blt2Dmg 200
+#define SizeMyBlt 64.0
+#define SizeLv2Blt 80.0
+#define SizeBossBlt1 64.0
+#define SizeBossBlt2 240.0
 
 enum InputAction {
     MoveUp = 0x0001,
@@ -63,17 +46,46 @@ enum InputAction {
     Back2Theme = 0x8000
 };
 
+enum HP {
+    HPMy = 1000,
+    HPBlt = 1,
+    HPLv1Enm = 30,
+    HPLv2Enm1 = 200,
+    HPLv2Enm2 = 40,
+    HPLv3Enm = 50,
+    HPBoss = 1000
+};
+
+enum Damage {
+    DmgMy = 100,
+    DmgMyBlt = 10,
+    DmgLv1Enm = 200,
+    DmgLv2Enm1 = 1000,
+    DmgLv2Blt = 100,
+    DmgLv2Enm2 = 300,
+    DmgLv3Enm = 400,
+    DmgBoss = 1000,
+    DmgBossBlt1 = 200,
+    DmgBossBlt2 = 200
+};
+
 enum Type {
-    MyType = 0x0000,
-    BossType = 0x0001,
-    MyBltType = 0x0010,
-    Lv2BltType = 0x0020,
-    Lv3Blt1Type = 0x0040,
-    Lv3Blt2Type = 0x0080,
-    Lv1EnmType = 0x0100,
-    Lv2Enm1Type = 0x0200,
-    Lv2Enm2Type = 0x0400,
-    Lv3EnmType = 0x0800,
+    TypeMy = 0x0000,
+    TypeBoss = 0x0002,
+    TypeMyBlt = 0x0001,
+    TypeLv2Blt = 0x0010,
+    TypeBossBlt1 = 0x0020,
+    TypeBossBlt2 = 0x0040,
+    TypeBossBlt3 = 0x0080,
+    TypeLv1Enm = 0x0100,
+    TypeLv2Enm1 = 0x0200,
+    TypeLv2Enm2 = 0x0400,
+    TypeLv3Enm = 0x0800,
+
+    TypeChargeEnm = 0x0D00,
+    TypeStayEnm = 0x0202,
+    TypeEnm = 0x0F02,
+    TypeEnmBlt = 0x00F0,
 };
 
 typedef struct ObjectParameters {
@@ -91,30 +103,35 @@ typedef struct ObjectParameters {
 void InitAll();
 void ThemeUI(SDL_Event *event, const Uint8 *KeyValue);
 int GameUI(SDL_Event *event, const Uint8 *KeyValue);
+void ControlFPS(clock_t FStartTime);
 int GetKey(const Uint8 *KeyValue);
 int MyAction(int Input);
-void ListAdd(OP **List, OP *NewNode);
-OP *CreateObject(OP who, float size, float fspeed, double direction, int hp, int type, int status, int damage);
-void Collision(OP **List);
-void ListMove(OP **List);
-void ListRemove(OP **List);
+void AddNode(OP **List, OP *NewNode);
+OP *CreateNode(OP who, float size, float fspeed, double direction, int hp, int type, int status, int damage);
+void FixXYDir(OP **Now, OP who, double direction);
+void Collide(OP **List);
+void MoveNode(OP **List);
+void RemoveNode(OP **List);
+void CountLevel(OP **Now);
 void CoolDown();
 double XY2Dir(float x1, float y1, float x2, float y2);
 float XY2Dis(float x1, float y1, float x2, float y2);
 void CreateEnemy(int level);
+void BossAction();
 void Move();
+void OutBounds(OP **Now);
 void Upgrade();
 void LoadRes();
 void PrintAnime();
 void PrintThemeBG();
 void PrintGameBG();
-void PrintList(OP **List, SDL_Surface *ListSurface[]);
+void PrintList(OP **List, SDL_Surface *SurList[]);
 void PrintMyself();
 void PrintLevel();
 
 static SDL_Window *Window = NULL;
 static SDL_Renderer *Renderer = NULL;
-static SDL_Event TotleEvent;
+static SDL_Event Event;
 
 static Mix_Music *BGM = NULL;
 static Mix_Chunk *Boom = NULL;
@@ -122,38 +139,41 @@ static Mix_Chunk *Boom = NULL;
 static TTF_Font *LargeFont = NULL;
 static TTF_Font *MiddleFont = NULL;
 static TTF_Font *SmallFont = NULL;
-static SDL_Color FontTwinkColor = {0, 0, 0, 0xFF};
+static SDL_Color FontCgColor = {0, 0, 0, 0xFF};
+static SDL_Color FontColor = {0, 0, 0, 0xDD};
 
-static SDL_Surface *ThemeBGSurface = NULL;
-static SDL_Surface *GameBGSurface = NULL;
-static SDL_Surface *MySurface[10] = {NULL};
-static SDL_Surface *EnemySurface[20] = {NULL};
-static SDL_Surface *BossSurface[10] = {NULL};
-static SDL_Surface *BulletSurface[10] = {NULL};
-static SDL_Surface *PropsSurface[30] = {NULL};
+static SDL_Surface *SurThemeBG = NULL;
+static SDL_Surface *SurGameBG = NULL;
+static SDL_Surface *SurMy[10] = {NULL};
+static SDL_Surface *SurEnemy[20] = {NULL};
+static SDL_Surface *SurBoss[10] = {NULL};
+static SDL_Surface *SurBullet[10] = {NULL};
+static SDL_Surface *SurProps[30] = {NULL};
 
-static SDL_Rect ThemeBGRect = {0, 0, Width, Height};
-static SDL_Rect GameBGRect = {0, -Height, Width, Height * 2};
+static SDL_Rect RectThemeBG = {0, 0, Width, Height};
+static SDL_Rect RectGameBG = {0, -Height, Width, Height * 2};
+static const SDL_FRect FRectMy = {(float) (Width - SizeMy) / 2, (float) Height / 5 * 4, SizeMy, SizeMy};
 
-static OP My = {{(float) (Width - MySize) / 2, (float) Height / 5 * 4, MySize, MySize},
-                {(float) MySize / 2, (float) MySize / 2}, 10, 180,
-                MyHP, MyType, 0x0, MyDmg, NULL};
+static OP My = {{(float) (Width - SizeMy) / 2, (float) Height / 5 * 4, SizeMy, SizeMy},
+                {(float) SizeMy / 2, (float) SizeMy / 2}, 10, 180,
+                HPMy, TypeMy, 0x0, DmgMy, NULL};
 static OP *MyBlt = NULL;
-static OP *ChargeEnemy = NULL;
-static OP *PeltEnemy = NULL;
+static OP *ChargeEnm = NULL;
+static OP *PeltEnm = NULL;
 static OP *PeltBlt = NULL;
 static OP *Boss = NULL;
+static OP *BossBlt = NULL;
 
-static int MyBltCD, ChargeCD, PeltEnemyCD, PeltBltCD, LevelCD;
-static int RorL;
-static int Level, Level1Cnt, Level2Cnt;
+static int CDMyBlt, CDChargeEnm, CDPeltEnm, CDBoss, CDBossBlt, CDPeltBlt, CDLevel, CDUnbeatableBoss;
+static int ChangeRL;
+static int Level, Lv1Cnt, Lv2Cnt, Lv3Cnt, BossBltCnt;
 static int ChargeEnemyForm;
 static int ChargeRandRage;
 
-static int TwinkTime = 360;
-static char ThemeTips[] = "Press_\"Enter\"_to_Start!";
-static char PauseTips[] = "Press_\"Space\"_to_Continue!";
-static char WinTips[] = "Press_\"Enter\"_to_Restart!";
-static char LoseTips[] = "Press_\"Enter\"_to_Remake!";
+static int CgAngle = 360;
+static char HintTheme[] = "Press_\"Enter\"_to_Start!";
+static char HintPause[] = "Press_\"Space\"_to_Continue!";
+static char HintWin[] = "Press_\"Enter\"_to_Restart!";
+static char HintLose[] = "Press_\"Enter\"_to_Remake!";
 
 #endif //SAKIYARY_EMOJIBATTLE_C_SAKIYARY_EMOJIBATTLE_H

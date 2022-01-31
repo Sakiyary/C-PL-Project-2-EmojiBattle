@@ -30,9 +30,9 @@ void ThemeUI(SDL_Event *event, const Uint8 *KeyValue) {
             if (event->type == SDL_QUIT || KeyValue[SDL_SCANCODE_ESCAPE])
                 return;
             if (KeyValue[SDL_SCANCODE_RETURN] || KeyValue[SDL_SCANCODE_KP_ENTER]) {
-                printf("Game Start!\n");
                 if (!GameUI(event, KeyValue))
                     return;
+                ResetFontColor();
                 PrintThemeBG();
             }
         }
@@ -56,17 +56,18 @@ int GameUI(SDL_Event *event, const Uint8 *KeyValue) {
             Mix_PauseMusic();
             return 1;
         }
-        ControlFPS(FStartTime);
         while (SDL_PollEvent(event))
             if (event->type == SDL_QUIT || KeyValue[SDL_SCANCODE_ESCAPE])
                 return 0;
+        ControlFPS(FStartTime);
     }
 }
 
 void ControlFPS(clock_t FStartTime) {
-    clock_t FDurTime = clock() - FStartTime;
+    FDurTime = clock() - FStartTime;
     if (FDurTime < mSPF)
         SDL_Delay(mSPF - FDurTime);
+    FDurTime = clock() - FStartTime;
 }
 
 int GetKey(const Uint8 *KeyValue) {
@@ -111,7 +112,7 @@ int MyAction(int Input) {
                     CreateNode(My, SizeMyBlt, 20, My.Direction + dir,
                                HPBlt, TypeMyBlt, 1, DmgMyBlt));
         }
-        CDMyBlt = 15;
+        CDMyBlt = 10;
     }
     if (Input & RotateLeft && My.Direction < 270)
         My.Direction += 10;
@@ -119,6 +120,10 @@ int MyAction(int Input) {
         My.Direction -= 10;
     if (Input & RotateReset && My.Direction != 180)
         My.Direction = 180;
+    if (Input & Tab && !CDDisplay) {
+        CDDisplay = 20;
+        CgDisplay = !CgDisplay;
+    }
     if (Input & Back2Theme)
         return 1;
     return 0;
@@ -164,14 +169,14 @@ void FixXYDir(OP **New, OP who, double direction) {
         Now->Direction = direction;
     }
     if (Now->Type & TypeChargeEnm) {
-        Now->FRect.x = ChangeRL > 1 ? (Width - Now->FRect.w) / 2
-                                    : ChangeRL ? +(float) (rand() % ChargeRandRage)
-                                               : Width - Now->FRect.w - (float) (rand() % ChargeRandRage);
+        Now->FRect.x = CgRL > 1 ? (Width - Now->FRect.w) / 2
+                                : CgRL ? +(float) (rand() % ChargeRandRage)
+                                       : Width - Now->FRect.w - (float) (rand() % ChargeRandRage);
         Now->FRect.y = -Now->FRect.h;
         if (Now->Type & TypeLv1Enm)
-            ChangeRL += ChangeRL > 1 ? -ChangeRL : 1;
+            CgRL += CgRL > 1 ? -CgRL : 1;
         else
-            ChangeRL = !ChangeRL;
+            CgRL = !CgRL;
         double FollowDir = XY2Dir(Now->FRect.x + Now->FCentre.x,
                                   Now->FRect.y + 0,
                                   who.FRect.x + who.FCentre.x,
@@ -244,22 +249,9 @@ void Collide(OP **List) {
                         i->HP = 0;
                     Now->HP -= Now->HP - i->Damage < 0 ? Now->HP : i->Damage;
                 }
-        if (Now->Type & (TypeLv2Enm1)) {
-            if (Now->HP < HPLv2Enm1 / 10 * 7)
-                Now->Status = 12;
-            if (Now->HP < HPLv2Enm1 / 10 * 4)
-                Now->Status = 13;
-        }
-        if (Now->Type & (TypeBoss)) {
-            if (Now->HP < HPBoss / 5 * 3 && Now->Status == 1)
-                Now->Status = 2;
-            if (Now->HP < HPBoss / 2 && Now->Status == 2) {
-                Now->Status = 3;
-                CDUnbeatableBoss = 100;
-                CDBossBlt = 70;
-            }
-        }
+        CgEnmStatus(&Now);
         if (!Now->HP) {
+            Score += (Now->Type >> 8) * 9;
             //Props
         } else if (XY2Dis(My.FRect.x + My.FCentre.x,
                           My.FRect.y + My.FCentre.y,
@@ -269,6 +261,25 @@ void Collide(OP **List) {
             Now->HP += Now->HP - My.Damage <= 0 ? -Now->HP : -My.Damage;
         }
         Now = Now->Next;
+    }
+}
+
+void CgEnmStatus(OP **Now) {
+    OP *Enm = *Now;
+    if (Enm->Type & (TypeLv2Enm1)) {
+        if (Enm->HP < HPLv2Enm1 / 10 * 7)
+            Enm->Status = 12;
+        if (Enm->HP < HPLv2Enm1 / 10 * 4)
+            Enm->Status = 13;
+    }
+    if (Enm->Type & (TypeBoss)) {
+        if (Enm->HP < HPBoss / 5 * 3 && Enm->Status == 1)
+            Enm->Status = 2;
+        if (Enm->HP < HPBoss / 2 && Enm->Status == 2) {
+            Enm->Status = 3;
+            CDUnbeatableBoss = 150;
+            CDBossBlt = 100;
+        }
     }
 }
 
@@ -319,6 +330,7 @@ void CoolDown() {
     CDBossBlt -= CDBossBlt > 0 ? 1 : 0;
     CDUnbeatableBoss -= CDUnbeatableBoss > 0 ? 1 : 0;
     CDLevel -= CDLevel > 0 ? 1 : 0;
+    CDDisplay -= CDDisplay > 0 ? 1 : 0;
     CgAngle -= CgAngle > 0 ? 4 : -356;
 }
 
@@ -416,19 +428,20 @@ void BossAction() {
                                     My.FRect.x + My.FCentre.x, My.FRect.y + My.FRect.h),
                            HPBlt, TypeBossBlt2, 5, DmgBossBlt2));
 
-        CDBossBlt = 50;
+        CDBossBlt = 80;
     }
     if (!CDUnbeatableBoss && Boss->Status == 3)
         Boss->Status = 4;
     if (!CDBossBlt && Boss->Status == 4) {
-        for (int dir = BossBltCnt * 3; dir <= 360 + BossBltCnt * 3; dir += 30)
+        for (int dir = CgPN * BossBltCnt * 8; dir <= 360 + CgPN * BossBltCnt * 8; dir += 30)
             AddNode(&BossBlt,
                     CreateNode(*Boss, SizeBossBlt1, 10, dir,
                                HPBlt, TypeBossBlt3, 6 + BossBltCnt % 4, DmgBossBlt1));
-        CDBossBlt = 12;
+        CDBossBlt = 15;
         BossBltCnt++;
         if (BossBltCnt == 12) {
             BossBltCnt = 0;
+            CgPN *= -1;
             CDBossBlt = 80;
         }
     }
@@ -454,6 +467,7 @@ void Upgrade() {
         Lv3Cnt = 1;
         CDBoss = 0;
         CDLevel = 150;
+        ResetFontColor();
         ChargeEnemyForm = 0;
         ChargeRandRage = 300;
     }
@@ -461,6 +475,7 @@ void Upgrade() {
         Level = 2;
         CDLevel = 150;
         CDPeltBlt = 230;
+        ResetFontColor();
         ChargeEnemyForm = 3;
         ChargeRandRage = 200;
     }
@@ -468,16 +483,29 @@ void Upgrade() {
         Level = 3;
         CDLevel = 150;
         CDBossBlt = 250;
+        CgPN = 1;
+        ResetFontColor();
         ChargeEnemyForm = 5;
         ChargeRandRage = 100;
     }
     if (!Lv3Cnt && Level == 3) {
+        ResetFontColor();
         CDLevel = 20000;
     }
 }
 
+void ResetFontColor() {
+    CgAngle = 360;
+    FontCgColor.a = 0xFF;
+}
+
 void PrintAnime() {
     PrintGameBG();
+    if (CgDisplay) {
+        PrintFPS();
+        PrintHP();
+        PrintInfo();
+    }
     PrintList(&ChargeEnm, SurEnemy);
     PrintList(&MyBlt, SurBullet);
     PrintList(&PeltBlt, SurBullet);
@@ -513,6 +541,16 @@ void PrintGameBG() {
     RectGameBG.y += RectGameBG.y >= 0 ? -Height + ScrollSpeed : ScrollSpeed;
 }
 
+void PrintFPS() {
+    sprintf_s(FPS, 15, "FPS:%.lf", 1000 / (double) FDurTime);
+    SDL_Surface *SurFPS = TTF_RenderUTF8_Blended(SmallFont, FPS, FontColor);
+    SDL_Texture *TexFPS = SDL_CreateTextureFromSurface(Renderer, SurFPS);
+    SDL_Rect RectFPS = {0, 0, SurFPS->w, SurFPS->h};
+    SDL_RenderCopy(Renderer, TexFPS, NULL, &RectFPS);
+    SDL_FreeSurface(SurFPS);
+    SDL_DestroyTexture(TexFPS);
+}
+
 void PrintList(OP **List, SDL_Surface *SurList[]) {
     for (OP *i = *List; i != NULL; i = i->Next) {
         SDL_Texture *TexList = SDL_CreateTextureFromSurface(Renderer, SurList[i->Status]);
@@ -525,6 +563,35 @@ void PrintMyself() {
     SDL_Texture *TexMy = SDL_CreateTextureFromSurface(Renderer, SurMy[My.HP > HPMy * 0.6 ? 1 : My.HP > HPMy * 0.3 ? 2 : 3]);
     SDL_RenderCopyExF(Renderer, TexMy, NULL, &My.FRect, 180 - My.Direction, &My.FCentre, 0);
     SDL_DestroyTexture(TexMy);
+}
+
+void PrintHP() {
+    SDL_Texture *TexHPSide = SDL_CreateTextureFromSurface(Renderer, SurHP[1]);
+    SDL_Rect RectHPSide = {10, Height - SurHP[1]->h - 10, SurHP[1]->w, SurHP[1]->h};
+    SDL_Texture *TexHP = SDL_CreateTextureFromSurface(Renderer, SurHP[My.HP > HPMy * 0.6 ? 2 : My.HP > HPMy * 0.3 ? 3 : 4]);
+    SDL_Rect RectHP = {10, Height - SurHP[2]->h - 10, SurHP[2]->w * My.HP / HPMy, SurHP[2]->h};
+    SDL_RenderCopy(Renderer, TexHP, NULL, &RectHP);
+    SDL_RenderCopy(Renderer, TexHPSide, NULL, &RectHPSide);
+    SDL_DestroyTexture(TexHPSide);
+    SDL_DestroyTexture(TexHP);
+}
+
+void PrintInfo() {
+    char SubScore[20], SubLevel[10];
+    sprintf_s(SubLevel, 10, "Level:%d", Level);
+    sprintf_s(SubScore, 20, "Score:%d", Score);
+    SDL_Surface *SurScore = TTF_RenderUTF8_Blended(SmallFont, SubScore, FontColor);
+    SDL_Texture *TexScore = SDL_CreateTextureFromSurface(Renderer, SurScore);
+    SDL_Rect RectScore = {10, Height - 15 - 27 - SurScore->h, SurScore->w, SurScore->h};
+    SDL_RenderCopy(Renderer, TexScore, NULL, &RectScore);
+    SDL_Surface *SurLevel = TTF_RenderUTF8_Blended(SmallFont, SubLevel, FontColor);
+    SDL_Texture *TexLevel = SDL_CreateTextureFromSurface(Renderer, SurLevel);
+    SDL_Rect RectLevel = {12, Height - 20 - 27 - SurLevel->h - SurScore->h, SurLevel->w, SurLevel->h};
+    SDL_RenderCopy(Renderer, TexLevel, NULL, &RectLevel);
+    SDL_FreeSurface(SurLevel);
+    SDL_FreeSurface(SurScore);
+    SDL_DestroyTexture(TexLevel);
+    SDL_DestroyTexture(TexScore);
 }
 
 void PrintLevel() {
@@ -546,34 +613,38 @@ void PrintLevel() {
 
 void LoadRes() {
     char FileName[40];
-    BGM = Mix_LoadMUS("res/Enemy.mp3");
+    BGM = Mix_LoadMUS("res/audio/Enemy.mp3");
     Mix_VolumeMusic(BGMVolume);
     Mix_Volume(-1, SoundVolume);
 
-    LargeFont = TTF_OpenFont("res/GenshinDefault.ttf", 64);
-    MiddleFont = TTF_OpenFont("res/GenshinDefault.ttf", 40);
-    SmallFont = TTF_OpenFont("res/GenshinDefault.ttf", 28);
+    LargeFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 64);
+    MiddleFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 40);
+    SmallFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 28);
 
-    SurGameBG = IMG_Load("res/GameBG.png");
-    SurThemeBG = IMG_Load("res/ThemeBG.png");
+    SurGameBG = IMG_Load("res/image/GameBG.png");
+    SurThemeBG = IMG_Load("res/image/ThemeBG.png");
     for (int i = 1; i <= 5; ++i) {
-        sprintf_s(FileName, 30, "res/I%d.png", i);
+        sprintf_s(FileName, 30, "res/image/I%d.png", i);
         SurMy[i] = IMG_Load(FileName);
     }
     for (int i = 1; i <= 15; ++i) {
-        sprintf_s(FileName, 30, "res/Enemy%d.png", i);
+        sprintf_s(FileName, 30, "res/image/Enemy%d.png", i);
         SurEnemy[i] = IMG_Load(FileName);
     }
     for (int i = 1; i <= 5; ++i) {
-        sprintf_s(FileName, 30, "res/Boss%d.png", i);
+        sprintf_s(FileName, 30, "res/image/Boss%d.png", i);
         SurBoss[i] = IMG_Load(FileName);
     }
     for (int i = 1; i <= 10; ++i) {
-        sprintf_s(FileName, 30, "res/Bullet%d.png", i);
+        sprintf_s(FileName, 30, "res/image/Bullet%d.png", i);
         SurBullet[i] = IMG_Load(FileName);
     }
+    for (int i = 1; i <= 5; ++i) {
+        sprintf_s(FileName, 30, "res/image/HP%d.png", i);
+        SurHP[i] = IMG_Load(FileName);
+    }
     for (int i = 1; i <= 30; ++i) {
-        sprintf_s(FileName, 30, "res/Props%d.png", i);
+        sprintf_s(FileName, 30, "res/image/Props%d.png", i);
         SurProps[i] = IMG_Load(FileName);
     }
 }

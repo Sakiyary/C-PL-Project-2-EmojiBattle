@@ -107,16 +107,18 @@ int MyAction(int Input) {
     if (Input & MoveRight && My.FRect.x <= Width - My.FRect.w)
         My.FRect.x += My.FSpeed;
     if (Input & Shoot && CDMyBlt == 0) {
-        for (int dir = -30; dir <= 30; dir += 15) {
+        int Twigs = ((My.Status & 0x1F00) >> 8) > 3 ? 3 : ((My.Status & 0x1F00) >> 8);
+        for (int dir = -Twigs * 15; dir <= Twigs * 15; dir += 15) {
             AddNode(&MyBlt,
                     CreateNode(My, SizeMyBlt, 20, My.Direction + dir,
-                               HPBlt, TypeMyBlt, 1, DmgMyBlt));
+                               HPBlt, TypeMyBlt, (CDBloodRage ? 2 : 1),
+                               (DmgMyBlt + ((My.Status & 0x1C00) >> 10) * 5) * (CDBloodRage ? 3 : 1)));
         }
-        CDMyBlt = 10;
+        CDMyBlt = 18 - ((My.Status & 0x00F0) >> 4);
     }
-    if (Input & RotateLeft && My.Direction < 270)
+    if (Input & RotateLeft && My.Direction < 270 && (My.Status & 0x0001))
         My.Direction += 10;
-    if (Input & RotateRight && My.Direction > 90)
+    if (Input & RotateRight && My.Direction > 90 && (My.Status & 0x0001))
         My.Direction -= 10;
     if (Input & RotateReset && My.Direction != 180)
         My.Direction = 180;
@@ -124,6 +126,8 @@ int MyAction(int Input) {
         CDDisplay = 20;
         CgDisplay = !CgDisplay;
     }
+    if (CDBloodRage)
+        BloodRage();
     if (Input & Back2Theme)
         return 1;
     return 0;
@@ -158,7 +162,7 @@ OP *CreateNode(OP who, float size, float fspeed, double direction, int hp, int t
 
 void FixXYDir(OP **New, OP who, double direction) {
     OP *Now = *New;
-    if (Now->Type & (TypeMyBlt | TypeEnmBlt)) {
+    if (Now->Type & (TypeMyBlt | TypeEnmBlt | TypeProps)) {
         Now->FRect.x = who.FRect.x + who.FCentre.x - Now->FCentre.x;
         Now->FRect.y = who.FRect.y + who.FCentre.y - Now->FCentre.y;
         Now->Direction = direction;
@@ -198,6 +202,10 @@ void MoveNode(OP **List) {
                 Now->FRect.y = Now->FRect.y > Now->FRect.h / 2 ? Now->FRect.y : Now->FRect.h / 2 + 1;
             } else
                 Now->FRect.y += Now->FSpeed;
+        } else if (Now->Type & TypeProps) {
+            Now->FRect.x += (float) sin(CgAngle * D2R);
+            Now->FRect.y += Now->FSpeed;
+            OutBounds(&Now);
         } else {
             if (Now->Type & (TypeLv2Blt | TypeChargeEnm)) {
                 double dDir = Now->Type & TypeLv1Enm ? 0.5 : 0.2;
@@ -214,11 +222,15 @@ void MoveNode(OP **List) {
         Now = Now->Next;
     }
     Now = *List;
-    if (Now->Type != TypeMyBlt) {
+    if (Now->Type & (~TypeMyBlt & ~TypeOut & ~TypeProps)) {
         if (!((Now->Type & TypeBoss) && CDUnbeatableBoss))
             Collide(List);
         RemoveNode(&MyBlt);
     }
+    if (Now->Type & TypeProps)
+        for (OP *i = Now; i != NULL; i = i->Next)
+            if (IsCollideMe(&i))
+                BuffMe(&i);
     RemoveNode(List);
 }
 
@@ -231,6 +243,7 @@ void OutBounds(OP **Now) {
         Enm->HP = 0;
         if (Enm->Type & TypeChargeEnm)
             My.HP -= Enm->Damage / 2;
+        Enm->Type = TypeOut;
     }
 }
 
@@ -239,29 +252,42 @@ void Collide(OP **List) {
         return;
     OP *Now = *List;
     while (Now != NULL) {
-        if (Now->Type & TypeEnm)
-            for (OP *i = MyBlt; i != NULL; i = i->Next)
-                if (XY2Dis(i->FRect.x + i->FCentre.x,
-                           i->FRect.y + i->FCentre.x,
-                           Now->FRect.x + Now->FCentre.x,
-                           Now->FRect.y + Now->FCentre.y) < i->FRect.w + Now->FRect.w / 4) {
-                    if (Now->HP)
-                        i->HP = 0;
-                    Now->HP -= Now->HP - i->Damage < 0 ? Now->HP : i->Damage;
-                }
+        CollideMyBlt(&Now);
         CgEnmStatus(&Now);
         if (!Now->HP) {
             Score += (Now->Type >> 8) * 9;
-            //Props
-        } else if (XY2Dis(My.FRect.x + My.FCentre.x,
-                          My.FRect.y + My.FCentre.y,
-                          Now->FRect.x + Now->FCentre.x,
-                          Now->FRect.y + Now->FCentre.y) < My.FRect.w / 4 * 3) {
-            My.HP -= Now->Damage;
-            Now->HP += Now->HP - My.Damage <= 0 ? -Now->HP : -My.Damage;
+            CreateProps(&Now);
+        } else if (IsCollideMe(&Now)) {
+            if (!CDGoldenBody)
+                My.HP -= My.HP - Now->Damage <= 0 ? My.HP : Now->Damage;
+            Now->HP -= Now->HP - My.Damage <= 0 ? Now->HP : My.Damage;
+
         }
         Now = Now->Next;
     }
+}
+
+void CollideMyBlt(OP **Now) {
+    OP *Enm = *Now;
+    if (Enm->Type & TypeEnm)
+        for (OP *i = MyBlt; i != NULL; i = i->Next)
+            if (XY2Dis(i->FRect.x + i->FCentre.x,
+                       i->FRect.y + i->FCentre.x,
+                       Enm->FRect.x + Enm->FCentre.x,
+                       Enm->FRect.y + Enm->FCentre.y) < i->FRect.w + Enm->FRect.w / 4) {
+                if (Enm->HP)
+                    i->HP = 0;
+                Enm->HP -= Enm->HP - i->Damage < 0 ? Enm->HP : i->Damage;
+            }
+}
+
+int IsCollideMe(OP **Now) {
+    OP *Object = *Now;
+    float dis = XY2Dis(My.FRect.x + My.FCentre.x,
+                       My.FRect.y + My.FCentre.y,
+                       Object->FRect.x + Object->FCentre.x,
+                       Object->FRect.y + Object->FCentre.y);
+    return dis < My.FRect.h;
 }
 
 void CgEnmStatus(OP **Now) {
@@ -283,13 +309,90 @@ void CgEnmStatus(OP **Now) {
     }
 }
 
+void CreateProps(OP **Now) {
+    OP *Enm = *Now;
+    if (rand() < RAND_MAX / 10 * 7) {
+        int status = 0;
+        int Ran = rand();
+        switch (Enm->Type) {
+            case TypeLv1Enm:
+                if (Ran < RAND_MAX / 10 * 2)
+                    status = Enm->Status == 1 ? 1 : 2;
+                else if (Ran < RAND_MAX / 10 * 5 && !(My.Status & 0x1000))
+                    status = 11;
+                else if (Ran < RAND_MAX / 10 * 6 && My.FRect.w > 72)
+                    status = 12;
+                else if (Ran < RAND_MAX / 10 * 8 && !(My.Status & 0x0080))
+                    status = 13;
+                break;
+            case TypeLv2Enm1:
+                if (Ran < RAND_MAX / 10 * 2)
+                    status = 4;
+                else if (Ran < RAND_MAX / 10 * 5 && !(My.Status & 0x1000))
+                    status = 11;
+                else if (Ran < RAND_MAX / 10 * 6 && !(My.Status & 0x0001))
+                    status = 14;
+                break;
+            case TypeLv2Enm2:
+                if (Ran < RAND_MAX / 10 * 3)
+                    status = 3;
+                else if (Ran < RAND_MAX / 10 * 4 && !(My.Status & 0x1000))
+                    status = 11;
+                else if (Ran < RAND_MAX / 10 * 5 && My.FRect.w > 72)
+                    status = 12;
+                else if (Ran < RAND_MAX / 10 * 6 && !(My.Status & 0x0080))
+                    status = 13;
+                break;
+            case TypeLv3Enm:
+                if (Ran < RAND_MAX / 10 * 3)
+                    status = Enm->Status == 7 ? 6 : 5;
+                else if (Ran < RAND_MAX / 10 * 6)
+                    status = 21;
+                else if (Ran < RAND_MAX / 10 * 9)
+                    status = 22;
+                break;
+            default:
+                break;
+        }
+        if (status)
+            AddNode(&Props,
+                    CreateNode(*Enm, SizeProps, 6, 0,
+                               HPProps, TypeProps, status, 0));
+    }
+}
+
+void BuffMe(OP **Now) {
+    OP *Buff = *Now;
+    Buff->HP = 0;
+    if (Buff->Status < 10) {
+        My.HP += My.HP / 40 * (int) pow(Buff->Status, 1.6);
+        My.HP = My.HP > HPMy ? HPMy : My.HP;
+    }
+    if (Buff->Status == 11)
+        My.Status += 1 << 8;
+    if (Buff->Status == 12) {
+        My.FRect.w -= 4;
+        My.FRect.h -= 4;
+        My.FCentre.x -= 2;
+        My.FCentre.y -= 2;
+    }
+    if (Buff->Status == 13)
+        My.Status += 1 << 4;
+    if (Buff->Status == 14)
+        My.Status += 1;
+    if (Buff->Status == 21)
+        CDBloodRage += 200;
+    if (Buff->Status == 22)
+        CDGoldenBody += 200;
+}
+
 void RemoveNode(OP **List) {
     if (*List == NULL)
         return;
     OP *Now = *List;
     OP *Pre = NULL;
     while (Now != NULL)
-        if (!Now->HP || !Lv3Cnt) {
+        if (!Now->HP || (!Lv3Cnt)) {
             CountLevel(&Now);
             if (*List == Now) {
                 *List = Now->Next;
@@ -330,7 +433,8 @@ void CoolDown() {
     CDBossBlt -= CDBossBlt > 0 ? 1 : 0;
     CDUnbeatableBoss -= CDUnbeatableBoss > 0 ? 1 : 0;
     CDLevel -= CDLevel > 0 ? 1 : 0;
-    CDDisplay -= CDDisplay > 0 ? 1 : 0;
+    CDBloodRage -= CDBloodRage > 0 ? 1 : 0;
+    CDGoldenBody -= CDGoldenBody > 0 ? 1 : 0;
     CgAngle -= CgAngle > 0 ? 4 : -356;
 }
 
@@ -354,7 +458,7 @@ void CreateEnemy(int level) {
                 for (int num = 0; num < 3; ++num) {
                     AddNode(&ChargeEnm,
                             CreateNode(My, SizeLv1Enm, 2, 0,
-                                       HPLv1Enm, TypeLv1Enm, ChargeEnemyForm, DmgLv1Enm));
+                                       HPLv1Enm + (NumLv1 - Lv1Cnt) * 5, TypeLv1Enm, ChargeEnemyForm, DmgLv1Enm + (NumLv1 - Lv1Cnt) * 5));
                 }
                 CDChargeEnm += 1000;
             }
@@ -365,7 +469,7 @@ void CreateEnemy(int level) {
                 for (int num = 0; num < 2; ++num) {
                     AddNode(&ChargeEnm,
                             CreateNode(My, SizeLv2Enm, 3, 0,
-                                       HPLv2Enm2, TypeLv2Enm2, ChargeEnemyForm, DmgLv2Enm2));
+                                       HPLv2Enm2 + (NumLv2 - Lv2Cnt) * 5, TypeLv2Enm2, ChargeEnemyForm, DmgLv2Enm2 + (NumLv2 - Lv2Cnt) * 5));
                 }
                 CDChargeEnm += 1000;
             }
@@ -373,14 +477,14 @@ void CreateEnemy(int level) {
                 CgAngle = 20;
                 AddNode(&PeltEnm,
                         CreateNode(My, SizeLv2Enm, 3, 0,
-                                   HPLv2Enm1, TypeLv2Enm1, 11, DmgLv2Enm1));
+                                   HPLv2Enm1 + (NumLv2 - Lv2Cnt) * 10, TypeLv2Enm1, 11, DmgLv2Enm1));
                 CDPeltEnm += 3000;
             }
             if (!CDPeltBlt) {
                 for (int dir = -45; dir <= 45; dir += 30)
                     AddNode(&PeltBlt,
                             CreateNode(*PeltEnm, SizeLv2Blt, 10, dir,
-                                       HPBlt, TypeLv2Blt, 3, DmgLv2Blt));
+                                       HPBlt, TypeLv2Blt, 3, DmgLv2Blt + (NumLv2 - Lv2Cnt) * 10));
                 CDPeltBlt += 60;
             }
             break;
@@ -454,6 +558,7 @@ void Move() {
     MoveNode(&ChargeEnm);
     MoveNode(&PeltEnm);
     MoveNode(&Boss);
+    MoveNode(&Props);
 
     Upgrade();
 }
@@ -461,19 +566,18 @@ void Move() {
 void Upgrade() {
     if (!Level) {
         Level = 1;
-        CDLevel = 300;
-        Lv1Cnt = 9;
-        Lv2Cnt = 3;
-        Lv3Cnt = 1;
+        Lv1Cnt = NumLv1;
+        Lv2Cnt = NumLv2;
+        Lv3Cnt = NumLv3;
         CDBoss = 0;
-        CDLevel = 150;
+        CDLevel = 250;
         ResetFontColor();
         ChargeEnemyForm = 0;
         ChargeRandRage = 300;
     }
     if (!Lv1Cnt && Level == 1) {
         Level = 2;
-        CDLevel = 150;
+        CDLevel = 100;
         CDPeltBlt = 230;
         ResetFontColor();
         ChargeEnemyForm = 3;
@@ -481,17 +585,24 @@ void Upgrade() {
     }
     if (!Lv2Cnt && Level == 2) {
         Level = 3;
-        CDLevel = 150;
+        CDLevel = 100;
         CDBossBlt = 250;
         CgPN = 1;
         ResetFontColor();
         ChargeEnemyForm = 5;
         ChargeRandRage = 100;
     }
-    if (!Lv3Cnt && Level == 3) {
+    if (!Lv3Cnt && !CDLevel && Level == 3) {
         ResetFontColor();
         CDLevel = 20000;
     }
+}
+
+void BloodRage() {
+    if (My.HP > 200)
+        My.HP -= 2;
+    else
+        My.HP -= My.HP / 100;
 }
 
 void ResetFontColor() {
@@ -506,6 +617,7 @@ void PrintAnime() {
         PrintHP();
         PrintInfo();
     }
+    PrintList(&Props, SurProps);
     PrintList(&ChargeEnm, SurEnemy);
     PrintList(&MyBlt, SurBullet);
     PrintList(&PeltBlt, SurBullet);
@@ -560,9 +672,14 @@ void PrintList(OP **List, SDL_Surface *SurList[]) {
 }
 
 void PrintMyself() {
-    SDL_Texture *TexMy = SDL_CreateTextureFromSurface(Renderer, SurMy[My.HP > HPMy * 0.6 ? 1 : My.HP > HPMy * 0.3 ? 2 : 3]);
+    SDL_Texture *TexMy = SDL_CreateTextureFromSurface(Renderer, SurMy[CDBloodRage ? 4 : My.HP > HPMy * 0.6 ? 1 : My.HP > HPMy * 0.3 ? 2 : 3]);
     SDL_RenderCopyExF(Renderer, TexMy, NULL, &My.FRect, 180 - My.Direction, &My.FCentre, 0);
     SDL_DestroyTexture(TexMy);
+    if (CDGoldenBody) {
+        SDL_Texture *TexGoldenBody = SDL_CreateTextureFromSurface(Renderer, SurMy[5]);
+        SDL_RenderCopyExF(Renderer, TexGoldenBody, NULL, &My.FRect, 180 - My.Direction, &My.FCentre, 0);
+        SDL_DestroyTexture(TexGoldenBody);
+    }
 }
 
 void PrintHP() {
@@ -596,11 +713,14 @@ void PrintInfo() {
 
 void PrintLevel() {
     char TitleLevel[20];
-    if (CDLevel > 300)
-        sprintf_s(TitleLevel, 10, "YouWin!");
-    else if (CDLevel > 150)
+    if (CDLevel > 400) {
+        sprintf_s(TitleLevel, 10, "You.Win!");
+        PrintHints(HintWin, 1);
+    } else if (CDLevel > 100) {
         sprintf_s(TitleLevel, 10, "Start");
-    else
+        PrintHints(Hint1Game, 1);
+        PrintHints(Hint2Game, 2);
+    } else
         sprintf_s(TitleLevel, 10, "Level%d", Level);
     SDL_Surface *SurTitleLevel = TTF_RenderUTF8_Blended(LargeFont, TitleLevel, FontCgColor);
     SDL_Texture *TexTitleLevel = SDL_CreateTextureFromSurface(Renderer, SurTitleLevel);
@@ -609,6 +729,15 @@ void PrintLevel() {
     SDL_FreeSurface(SurTitleLevel);
     SDL_DestroyTexture(TexTitleLevel);
     FontCgColor.a += (int) (8 * sin(CgAngle * D2R));
+}
+
+void PrintHints(char HintGame[], int mode) {
+    SDL_Surface *SurHint = TTF_RenderUTF8_Blended(MiddleFont, HintGame, FontCgColor);
+    SDL_Texture *TexHint = SDL_CreateTextureFromSurface(Renderer, SurHint);
+    SDL_Rect RectHint = {(Width - SurHint->w) / 2, Height / 2 + (SurHint->h + 10) * mode, SurHint->w, SurHint->h};
+    SDL_RenderCopy(Renderer, TexHint, NULL, &RectHint);
+    SDL_FreeSurface(SurHint);
+    SDL_DestroyTexture(TexHint);
 }
 
 void LoadRes() {

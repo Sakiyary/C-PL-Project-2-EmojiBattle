@@ -27,18 +27,18 @@
 #define SizeLv2Enm 144.0
 #define SizeLv3Enm 120.0
 #define SizeBoss 216.0
-#define SizeProps 120.0
+#define SizeProps 120
 
 #define SizeMyBlt 64.0
 #define SizeLv2Blt 80.0
 #define SizeBossBlt1 64.0
 #define SizeBossBlt2 240.0
 
-#define NumLv1 15
-#define NumLv2 5
+#define NumLv1 36
+#define NumLv2 8
 #define NumLv3 1
 
-#define StatusMy 0x1FF1
+#define StatusMy 0x0000
 
 enum InputAction {
     MoveUp = 0x0001,
@@ -62,7 +62,7 @@ enum HP {
     HPLv2Enm1 = 600,
     HPLv2Enm2 = 300,
     HPLv3Enm = 500,
-    HPBoss = 30000
+    HPBoss = 5000
 };
 
 enum Damage {
@@ -113,8 +113,13 @@ typedef struct ObjectParameters {
 } OP;
 
 void InitAll();
-void ThemeUI(SDL_Event *event, const Uint8 *KeyValue);
-int GameUI(SDL_Event *event, const Uint8 *KeyValue);
+void ThemeUI(const Uint8 *KeyValue);
+int GameUI(const Uint8 *KeyValue);
+int GameOver();
+int IsVictory();
+int MsgAction();
+void Restart();
+int TheWorld();
 void ControlFPS(clock_t FStartTime);
 int GetKey(const Uint8 *KeyValue);
 int MyAction(int Input);
@@ -124,11 +129,11 @@ void FixXYDir(OP **Now, OP who, double direction);
 void Collide(OP **List);
 void CollideMyBlt(OP **Now);
 int IsCollideMe(OP **Now);
-void CgEnmStatus(OP **Now);
+void ChangeEnmStatus(OP **Now);
 void CreateProps(OP **Now);
 void BuffMe(OP **Now);
 void MoveNode(OP **List);
-void RemoveNode(OP **List);
+void RemoveNode(OP **List, int mode);
 void CountLevel(OP **Now);
 void CoolDown();
 void BloodRage();
@@ -139,16 +144,19 @@ void BossAction();
 void Move();
 void OutBounds(OP **Now);
 void Upgrade();
+void ChangeFontColor();
 void ResetFontColor();
 void LoadRes();
 void PrintAnime();
-void PrintThemeBG();
+void PrintBG(int mode, char *HintName);
 void PrintGameBG();
 void PrintFPS();
 void PrintList(OP **List, SDL_Surface *SurList[]);
 void PrintMyself();
 void PrintHP();
 void PrintInfo();
+void PrintStatus();
+void PrintBuff(int buff, int num, int position);
 void PrintLevel();
 void PrintHints(char HintGame[], int mode);
 
@@ -157,6 +165,9 @@ static SDL_Renderer *Renderer = NULL;
 static SDL_Event Event;
 
 static Mix_Music *BGM = NULL;
+static Mix_Music *DDD = NULL;
+static Mix_Music *Chao = NULL;
+static Mix_Music *OWVic = NULL;
 static Mix_Chunk *Boom = NULL;
 
 static TTF_Font *LargeFont = NULL;
@@ -165,8 +176,7 @@ static TTF_Font *SmallFont = NULL;
 static SDL_Color FontCgColor = {0, 0, 0, 0xFF};
 static SDL_Color FontColor = {0, 0, 0, 0x99};
 
-static SDL_Surface *SurThemeBG = NULL;
-static SDL_Surface *SurGameBG = NULL;
+static SDL_Surface *SurBG[10] = {NULL};
 static SDL_Surface *SurMy[10] = {NULL};
 static SDL_Surface *SurEnemy[20] = {NULL};
 static SDL_Surface *SurBoss[10] = {NULL};
@@ -174,7 +184,7 @@ static SDL_Surface *SurBullet[10] = {NULL};
 static SDL_Surface *SurHP[10] = {NULL};
 static SDL_Surface *SurProps[30] = {NULL};
 
-static SDL_Rect RectThemeBG = {0, 0, Width, Height};
+static SDL_Rect RectBG = {0, 0, Width, Height};
 static SDL_Rect RectGameBG = {0, -Height, Width, Height * 2};
 static const SDL_FRect FRectMy = {(float) (Width - SizeMy) / 2, (float) Height / 5 * 4, SizeMy, SizeMy};
 
@@ -190,7 +200,8 @@ static OP *BossBlt = NULL;
 static OP *Props = NULL;
 
 static int CDMyBlt, CDChargeEnm, CDPeltEnm, CDBoss, CDBossBlt,
-        CDPeltBlt, CDLevel, CDUnbeatableBoss, CDDisplay, CDBloodRage, CDGoldenBody;
+        CDPeltBlt, CDLevel, CDUnbeatableBoss, CDBloodRage, CDGoldenBody,
+        CDDisplay, CDPause;
 static int Level, Lv1Cnt, Lv2Cnt, Lv3Cnt, BossBltCnt;
 static int ChargeEnemyForm;
 static int ChargeRandRage;
@@ -198,12 +209,12 @@ static int Score;
 
 static int CgRL, CgPN, CgDisplay;
 static int CgAngle = 360;
-static char HintTheme[] = "Press.\"Enter\".to.Start!";
-static char Hint1Game[] = "Press.\"Space\".to.Pause!";
-static char Hint2Game[] = "Press.\"Tab\".to.Switch.Display!";
-static char HintPause[] = "Press.\"Space\".to.Continue!";
-static char HintWin[] = "Press.\"Enter\".to.Restart!";
-static char HintLose[] = "Press.\"Enter\".to.Remake!";
+static char HintTheme[] = "Press \"Enter\" to Start!";
+static char Hint1Game[] = "Press \"Space\" to Pause!";
+static char Hint2Game[] = "Press \"Tab\" to Switch Display!";
+static char HintPause[] = "                       Press \"Space\" to Continue!";
+static char HintWin[] = "Press \"Enter\" to Restart!";
+static char HintLose[] = "Press \"Enter\" to Remake!";
 static char FPS[15];
 
 static clock_t FDurTime;

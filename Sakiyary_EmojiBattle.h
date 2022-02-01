@@ -35,10 +35,9 @@
 #define SizeBossBlt2 240.0
 
 #define NumLv1 36
-#define NumLv2 8
-#define NumLv3 1
+#define NumLv2 6
 
-#define StatusMy 0x0000
+#define StatusMy 0x1F80
 
 enum InputAction {
     MoveUp = 0x0001,
@@ -59,10 +58,10 @@ enum HP {
     HPBlt = 1,
     HPProps = 1,
     HPLv1Enm = 60,
-    HPLv2Enm1 = 600,
+    HPLv2Enm1 = 1000,
     HPLv2Enm2 = 300,
     HPLv3Enm = 500,
-    HPBoss = 5000
+    HPBoss = 10000
 };
 
 enum Damage {
@@ -206,7 +205,6 @@ static int Level, Lv1Cnt, Lv2Cnt, Lv3Cnt, BossBltCnt;
 static int ChargeEnemyForm;
 static int ChargeRandRage;
 static int Score;
-
 static int CgRL, CgPN, CgDisplay;
 static int CgAngle = 360;
 static char HintTheme[] = "Press \"Enter\" to Start!";

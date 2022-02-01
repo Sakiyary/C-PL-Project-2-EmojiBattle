@@ -47,6 +47,7 @@ int GameUI(const Uint8 *KeyValue) {
         Mix_PlayMusic(BGM, -1);
     Upgrade();
     while (1) {
+        clock_t FStartTime = clock();
         if (!My.HP) {
             if (GameOver())
                 return 0;
@@ -59,17 +60,16 @@ int GameUI(const Uint8 *KeyValue) {
             else
                 Restart();
         }
-        clock_t FStartTime = clock();
         CoolDown();
         if (!CDLevel)
             CreateEnemy(Level);
         Move();
-        PrintAnime();
         int action = MyAction(GetKey(KeyValue));
         if (action) {
             Mix_PauseMusic();
             return action == 1 ? 1 : 0;
         }
+        PrintAnime();
         while (SDL_PollEvent(&Event))
             if (Event.type == SDL_QUIT || KeyValue[SDL_SCANCODE_ESCAPE])
                 return 0;
@@ -81,6 +81,7 @@ int GameOver() {
     Mix_HaltMusic();
     Mix_PlayMusic(DDD, 1);
     ResetFontColor();
+    PrintMyself();
     int CDDeath = 80;
     while (CDDeath) {
         SDL_Delay(mSPF);
@@ -101,6 +102,8 @@ int IsVictory() {
     Mix_HaltMusic();
     Mix_FadeInMusic(OWVic, 1, 500);
     ResetFontColor();
+    PrintList(&Boss, SurBoss);
+    PrintMyself();
     int CDVictory = 100;
     while (CDVictory) {
         SDL_Delay(mSPF);
@@ -138,7 +141,10 @@ void Restart() {
     RemoveNode(&Boss, 1);
     RemoveNode(&BossBlt, 1);
     RemoveNode(&MyBlt, 1);
+    RemoveNode(&Props, 1);
     Level = 0;
+    for (int i = 0; i < 1000; ++i)
+        CoolDown();
     Upgrade();
     My.FRect.x = (float) (Width - SizeMy) / 2;
     My.FRect.y = (float) Height / 5 * 4;
@@ -354,7 +360,7 @@ void OutBounds(OP **Now) {
         || (Enm->FRect.x >= Width + 1)) {
         Enm->HP = 0;
         if (Enm->Type & TypeChargeEnm)
-            My.HP -= Enm->Damage / 2;
+            My.HP -= My.HP - Enm->Damage / 2 <= 0 ? My.HP : Enm->Damage / 2;
         Enm->Type = TypeOut;
     }
 }
@@ -680,10 +686,14 @@ void Move() {
 void Upgrade() {
     if (!Level) {
         Level = 1;
+        Score = 0;
+        CgRL = 0;
+        CgPN = 0;
+        CgDisplay = 0;
         Lv1Cnt = NumLv1;
         Lv2Cnt = NumLv2;
-        Lv3Cnt = NumLv3;
         CDBoss = 0;
+        BossBltCnt = 0;
         CDLevel = 250;
         ResetFontColor();
         ChargeEnemyForm = 0;
@@ -706,17 +716,13 @@ void Upgrade() {
         ChargeEnemyForm = 5;
         ChargeRandRage = 100;
     }
-//    if (!Lv3Cnt && !CDLevel && Level == 3) {
-//        ResetFontColor();
-//        CDLevel = 20000;
-//    }
 }
 
 void BloodRage() {
     if (My.HP > 200)
         My.HP -= 2;
     else
-        My.HP -= My.HP / 100;
+        My.HP -= My.HP * 10 / 1000;
 }
 
 void ChangeFontColor() {
@@ -857,10 +863,6 @@ void PrintBuff(int buff, int num, int position) {
 
 void PrintLevel() {
     char TitleLevel[20];
-//    if (CDLevel > 400) {
-//        sprintf_s(TitleLevel, 10, "You Win!");
-//        PrintHints(HintWin, 1);
-//    } else
     if (CDLevel > 100) {
         sprintf_s(TitleLevel, 10, "Start");
         PrintHints(Hint1Game, 1);

@@ -90,12 +90,10 @@ enum Type {
     TypeLv2Enm2 = 0x0200,
     TypeLv2Enm1 = 0x0400,
     TypeLv3Enm = 0x0800,
-
     TypeChargeEnm = 0x0B00,
     TypeStayEnm = 0x0402,
     TypeEnm = 0x0F02,
     TypeEnmBlt = 0x00F0,
-
 };
 
 typedef struct ObjectParameters {
@@ -200,7 +198,7 @@ static int ChargeEnemyForm;
 static int ChargeRandRage;
 static int Score;
 static int CgRL, CgPN, CgDisplay;
-static int CgAngle = 360;
+static int CgAngle;
 static char HintTheme[] = "Press \"Enter\" to Start!";
 static char Hint1Game[] = "Press \"Space\" to Pause!";
 static char Hint2Game[] = "Press \"Tab\" to Switch Display!";

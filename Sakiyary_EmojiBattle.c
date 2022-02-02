@@ -24,6 +24,7 @@ void InitAll() {
 }
 
 void ThemeUI(const Uint8 *KeyValue) {
+    ResetFontColor();
     while (1) {
         PrintBG(1, HintTheme);
         CgAngle -= CgAngle > 0 ? 4 : -356;

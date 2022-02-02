@@ -177,7 +177,6 @@ static SDL_Surface *SurProps[30] = {NULL};
 
 static SDL_Rect RectBG = {0, 0, Width, Height};
 static SDL_Rect RectGameBG = {0, -Height, Width, Height * 2};
-static const SDL_FRect FRectMy = {(float) (Width - SizeMy) / 2, (float) Height / 5 * 4, SizeMy, SizeMy};
 
 static OP My = {{(float) (Width - SizeMy) / 2, (float) Height / 5 * 4, SizeMy, SizeMy},
                 {(float) SizeMy / 2, (float) SizeMy / 2}, 15, 180,
@@ -193,7 +192,7 @@ static OP *Props = NULL;
 static int CDMyBlt, CDChargeEnm, CDPeltEnm, CDBoss, CDBossBlt,
         CDPeltBlt, CDLevel, CDUnbeatableBoss, CDBloodRage, CDGoldenBody,
         CDDisplay, CDPause;
-static int Level, Lv1Cnt, Lv2Cnt, Lv3Cnt, BossBltCnt;
+static int Level, Lv1Cnt, Lv2Cnt, BossBltCnt;
 static int ChargeEnemyForm;
 static int ChargeRandRage;
 static int Score;

@@ -795,11 +795,11 @@ void PrintList(OP **List, SDL_Surface *SurList[]) {
 
 void PrintMyself() {
     SDL_Texture *TexMy = SDL_CreateTextureFromSurface(Renderer, SurMy[(Boss != NULL && !Boss->HP) ?
-                                                                      7 : CDBloodRage ?
-                                                                          4 : My.HP > HPMy * 0.6 ?
-                                                                              1 : My.HP > HPMy * 0.3 ?
-                                                                                  2 : My.HP > 0 ?
-                                                                                      3 : 6]);
+                                                                      7 : My.HP <= 0 ?
+                                                                          6 : CDBloodRage ?
+                                                                              4 : My.HP > HPMy * 0.6 ?
+                                                                                  1 : My.HP > HPMy * 0.3 ?
+                                                                                      2 : 3]);
     SDL_RenderCopyExF(Renderer, TexMy, NULL, &My.FRect, 180 - My.Direction, &My.FCentre, 0);
     SDL_DestroyTexture(TexMy);
     if (CDGoldenBody) {

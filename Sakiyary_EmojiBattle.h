@@ -36,7 +36,7 @@
 #define NumLv1 36
 #define NumLv2 6
 
-#define StatusMy 0x1FF1
+#define StatusMy 0x0000
 
 enum InputAction {
     MoveUp = 0x0001,

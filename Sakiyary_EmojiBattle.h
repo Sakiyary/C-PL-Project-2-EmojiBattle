@@ -18,7 +18,7 @@
 #define D2R 0.01745329252
 #define R2D 57.29577951
 #define ScrollSpeed 10
-#define BGMVolume 30
+#define BGMVolume 40
 #define SoundVolume 40
 #define mSPF 21
 
@@ -28,7 +28,6 @@
 #define SizeLv3Enm 120.0
 #define SizeBoss 216.0
 #define SizeProps 120
-
 #define SizeMyBlt 64.0
 #define SizeLv2Blt 80.0
 #define SizeBossBlt1 64.0
@@ -37,7 +36,7 @@
 #define NumLv1 36
 #define NumLv2 6
 
-#define StatusMy 0x1F80
+#define StatusMy 0x1FF1
 
 enum InputAction {
     MoveUp = 0x0001,
@@ -163,24 +162,19 @@ static SDL_Window *Window = NULL;
 static SDL_Renderer *Renderer = NULL;
 static SDL_Event Event;
 
-static Mix_Music *BGM = NULL;
-static Mix_Music *DDD = NULL;
-static Mix_Music *Chao = NULL;
-static Mix_Music *OWVic = NULL;
-static Mix_Chunk *Boom = NULL;
-
 static TTF_Font *LargeFont = NULL;
 static TTF_Font *MiddleFont = NULL;
 static TTF_Font *SmallFont = NULL;
 static SDL_Color FontCgColor = {0, 0, 0, 0xFF};
 static SDL_Color FontColor = {0, 0, 0, 0x99};
 
-static SDL_Surface *SurBG[10] = {NULL};
-static SDL_Surface *SurMy[10] = {NULL};
-static SDL_Surface *SurEnemy[20] = {NULL};
-static SDL_Surface *SurBoss[10] = {NULL};
-static SDL_Surface *SurBullet[10] = {NULL};
-static SDL_Surface *SurHP[10] = {NULL};
+static Mix_Music *BGM[30] = {NULL};
+static SDL_Surface *SurBG[30] = {NULL};
+static SDL_Surface *SurMy[30] = {NULL};
+static SDL_Surface *SurEnemy[30] = {NULL};
+static SDL_Surface *SurBoss[30] = {NULL};
+static SDL_Surface *SurBullet[30] = {NULL};
+static SDL_Surface *SurHP[30] = {NULL};
 static SDL_Surface *SurProps[30] = {NULL};
 
 static SDL_Rect RectBG = {0, 0, Width, Height};

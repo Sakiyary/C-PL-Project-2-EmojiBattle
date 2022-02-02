@@ -44,7 +44,7 @@ int GameUI(const Uint8 *KeyValue) {
     if (Mix_PausedMusic())
         Mix_ResumeMusic();
     else
-        Mix_PlayMusic(BGM, -1);
+        Mix_PlayMusic(BGM[1], -1);
     Upgrade();
     while (1) {
         clock_t FStartTime = clock();
@@ -79,7 +79,7 @@ int GameUI(const Uint8 *KeyValue) {
 
 int GameOver() {
     Mix_HaltMusic();
-    Mix_PlayMusic(DDD, 1);
+    Mix_PlayMusic(BGM[2], 1);
     ResetFontColor();
     PrintMyself();
     int CDDeath = 80;
@@ -100,8 +100,9 @@ int GameOver() {
 
 int IsVictory() {
     Mix_HaltMusic();
-    Mix_FadeInMusic(OWVic, 1, 500);
+    Mix_FadeInMusic(BGM[4], 1, 500);
     ResetFontColor();
+    ChangeEnmStatus(&Boss);
     PrintList(&Boss, SurBoss);
     PrintMyself();
     int CDVictory = 100;
@@ -154,7 +155,7 @@ void Restart() {
     My.Direction = 180;
     My.HP = HPMy;
     My.Status = StatusMy;
-    Mix_PlayMusic(BGM, -1);
+    Mix_PlayMusic(BGM[1], -1);
 }
 
 int TheWorld() {
@@ -419,7 +420,7 @@ void ChangeEnmStatus(OP **Now) {
     if (Enm->Type & (TypeBoss)) {
         if (Enm->HP < HPBoss / 40 * 23 && Enm->Status == 1) {
             Enm->Status = 2;
-            Mix_PlayMusic(Chao, 1);
+            Mix_PlayMusic(BGM[3], 1);
         }
         if (Enm->HP < HPBoss / 2 && Enm->Status == 2) {
             Enm->Status = 3;
@@ -888,42 +889,26 @@ void PrintHints(char HintGame[], int mode) {
 
 void LoadRes() {
     char FileName[40];
-    BGM = Mix_LoadMUS("res/audio/Enemy.mp3");
-    DDD = Mix_LoadMUS("res/audio/Over.mp3");
-    Chao = Mix_LoadMUS("res/audio/Chao.mp3");
-    OWVic = Mix_LoadMUS("res/audio/Win.mp3");
     Mix_VolumeMusic(BGMVolume);
     Mix_Volume(-1, SoundVolume);
-
     LargeFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 72);
     MiddleFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 40);
     SmallFont = TTF_OpenFont("res/font/GenshinDefault.ttf", 28);
-
-    for (int i = 1; i <= 6; ++i) {
+    for (int i = 1; i <= 25; ++i) {
+        sprintf_s(FileName, 30, "res/audio/BGM%d.mp3", i);
+        BGM[i] = Mix_LoadMUS(FileName);
         sprintf_s(FileName, 30, "res/image/BG%d.png", i);
         SurBG[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 10; ++i) {
         sprintf_s(FileName, 30, "res/image/I%d.png", i);
         SurMy[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 15; ++i) {
         sprintf_s(FileName, 30, "res/image/Enemy%d.png", i);
         SurEnemy[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 10; ++i) {
         sprintf_s(FileName, 30, "res/image/Boss%d.png", i);
         SurBoss[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 10; ++i) {
         sprintf_s(FileName, 30, "res/image/Bullet%d.png", i);
         SurBullet[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 5; ++i) {
         sprintf_s(FileName, 30, "res/image/HP%d.png", i);
         SurHP[i] = IMG_Load(FileName);
-    }
-    for (int i = 1; i <= 30; ++i) {
         sprintf_s(FileName, 30, "res/image/Props%d.png", i);
         SurProps[i] = IMG_Load(FileName);
     }

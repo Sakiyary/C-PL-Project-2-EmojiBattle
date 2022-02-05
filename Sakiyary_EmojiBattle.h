@@ -49,7 +49,7 @@ enum InputAction {
     RotateReset = 0x0080,
     Pause = 0x1000,
     Tab = 0x2000,
-    Back2Theme = 0x8000
+    Back2Theme = 0x8000,
 };
 
 enum HP {
@@ -60,7 +60,7 @@ enum HP {
     HPLv2Enm1 = 1000,
     HPLv2Enm2 = 300,
     HPLv3Enm = 500,
-    HPBoss = 10000
+    HPBoss = 10000,
 };
 
 enum Damage {
@@ -73,7 +73,7 @@ enum Damage {
     DmgLv3Enm = 500,
     DmgBoss = HPMy,
     DmgBossBlt1 = 200,
-    DmgBossBlt2 = HPMy / 3 * 2
+    DmgBossBlt2 = HPMy / 3 * 2,
 };
 
 enum Type {

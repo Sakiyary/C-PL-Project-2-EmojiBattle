@@ -428,7 +428,7 @@ void ChangeEnmStatus(OP **Now) {
             CDUnbeatableBoss = 150;
             CDBossBlt = 100;
         }
-        if (Enm->HP <= 0)
+        if (!Enm->HP)
             Enm->Status = 5;
     }
 }
